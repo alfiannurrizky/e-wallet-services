@@ -3,9 +3,11 @@ import { UserType } from '../types/UserType'
 import prisma from '../utils/database'
 import bcrypt from 'bcrypt'
 import ResponseError from '../utils/response'
+import JWT from '../utils/jwt'
 
 interface IAuthService {
   register(payload: UserType): Promise<User>
+  login(payload: Pick<UserType, 'email' | 'password'>): Promise<string>
 }
 
 class AuthService implements IAuthService {
@@ -31,6 +33,38 @@ class AuthService implements IAuthService {
     })
 
     return user
+  }
+
+  async login(payload: Pick<UserType, 'email' | 'password'>) {
+    const existUser = await prisma.user.findUnique({
+      where: {
+        email: payload.email
+      }
+    })
+
+    if (!existUser) {
+      throw new ResponseError(404, 'user not found!')
+    }
+
+    const isValid = await bcrypt.compare(payload.password, existUser.password)
+
+    if (!isValid) {
+      throw new ResponseError(400, 'email or password is wrong!')
+    }
+
+    const result = {
+      id: existUser.id,
+      username: existUser.username,
+      email: existUser.email
+    }
+
+    const token = await JWT.signToken(result)
+
+    if (!token) {
+      throw new ResponseError(401, 'invalid token')
+    }
+
+    return token
   }
 }
 
