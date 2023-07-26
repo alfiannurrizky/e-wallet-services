@@ -66,3 +66,55 @@ describe('POST /api/v1/register', () => {
     expect(response.body.message[0].msg).toBe('must be min 8 characters')
   })
 })
+
+describe('POST api/v1/login', () => {
+  beforeEach(async () => {
+    await createTestUSer()
+  })
+
+  afterEach(async () => {
+    await removeTestUser()
+  })
+
+  it('should return success login', async () => {
+    const response = await supertest(app).post('/api/v1/login').send({
+      email: 'testUser@email.com',
+      password: 'password'
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.token).toBeDefined()
+  })
+
+  it('should return failed login wrong password', async () => {
+    const response = await supertest(app).post('/api/v1/login').send({
+      email: 'testUser@email.com',
+      password: 'wrong password'
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.body.error.message).toBe('email or password is wrong!')
+    expect(response.body.success).toBe(false)
+  })
+
+  it('should return failed login user not found', async () => {
+    const response = await supertest(app).post('/api/v1/login').send({
+      email: 'usernotfound@email.com',
+      password: 'password'
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.body.error.message).toBe('user not found!')
+    expect(response.body.success).toBe(false)
+  })
+
+  it('should return required field', async () => {
+    const response = await supertest(app).post('/api/v1/login').send({
+      email: 'testUser@email.com',
+      password: ''
+    })
+
+    expect(response.status).toBe(422)
+    expect(response.body.message[0].msg).toBe('the password field is required!')
+  })
+})
