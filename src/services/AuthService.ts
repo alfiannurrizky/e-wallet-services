@@ -1,34 +1,32 @@
-import { IUser } from '../types/UserType'
+import { User } from '@prisma/client'
+import { UserType } from '../types/UserType'
+import prisma from '../utils/database'
+import bcrypt from 'bcrypt'
+import ResponseError from '../utils/response'
 
-const { User } = require('../models')
+interface IAuthService {
+  register(payload: UserType): Promise<User>
+}
 
-class AuthService {
-  public async createUser(payload: IUser) {
-    const user = await User.create(payload)
-
-    return user
-  }
-
-  public async checkEmailAlreadyTaken(email: string) {
-    const userEmail = await User.findOne({ where: { email: email } })
-
-    return userEmail
-  }
-
-  public async findByEmail(email: string) {
-    const userEmail = await User.findOne({
-      where: { email: email }
+class AuthService implements IAuthService {
+  async register(payload: UserType) {
+    const emailExist = await prisma.user.findUnique({
+      where: {
+        email: payload.email
+      }
     })
 
-    return userEmail
-  }
+    if (emailExist) {
+      throw new ResponseError(400, 'email already exist!')
+    }
 
-  public async userProfile(id: string) {
-    const user = await User.findOne({
-      where: { id: id },
-      include: 'wallet',
-      attributes: {
-        exclude: ['password']
+    const hashedPassword = await bcrypt.hash(payload.password, 10)
+
+    const user = await prisma.user.create({
+      data: {
+        username: payload.username,
+        email: payload.email,
+        password: hashedPassword
       }
     })
 
