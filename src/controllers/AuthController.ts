@@ -38,14 +38,18 @@ class AuthController {
     }
   }
 
-  // async profile = (req: Request, res: Response) => {
-  //   const user = await AuthService.userProfile(res.locals.id)
+  async profile(req: Request, res: Response) {
+    try {
+      const user = await AuthService.profile(req.user.id)
 
-  //   return res.status(200).json({
-  //     success: true,
-  //     data: user
-  //   })
-  // }
+      return res.status(200).json({
+        message: 'data user',
+        data: user
+      })
+    } catch (error) {
+      res.status(500).json({ error: error })
+    }
+  }
 }
 
 export default new AuthController()
