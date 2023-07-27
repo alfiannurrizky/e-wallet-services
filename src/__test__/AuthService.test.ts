@@ -118,3 +118,31 @@ describe('POST api/v1/login', () => {
     expect(response.body.message[0].msg).toBe('the password field is required!')
   })
 })
+
+describe('GET api/v1/profile', () => {
+  let token: string = ''
+
+  beforeAll(async () => {
+    await createTestUSer()
+    const response = await supertest(app).post('/api/v1/login').send({
+      email: 'testUser@email.com',
+      password: 'password'
+    })
+
+    token = response.body.data.token
+  })
+
+  afterAll(async () => {
+    await removeTestUser()
+  })
+
+  it('should return get current user login', async () => {
+    const response = await supertest(app)
+      .get('/api/v1/profile')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toBeDefined()
+    expect(response.body.data.username).toBe('testUser')
+  })
+})
