@@ -8,6 +8,7 @@ import JWT from '../utils/jwt'
 interface IAuthService {
   register(payload: UserType): Promise<User>
   login(payload: Pick<UserType, 'email' | 'password'>): Promise<string>
+  profile(id: string): Promise<object | null>
 }
 
 class AuthService implements IAuthService {
@@ -65,6 +66,22 @@ class AuthService implements IAuthService {
     }
 
     return token
+  }
+
+  async profile(id: string) {
+    const user = await prisma.user.findUnique({
+      where: {
+        id: id
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        wallet: true
+      }
+    })
+
+    return user
   }
 }
 
