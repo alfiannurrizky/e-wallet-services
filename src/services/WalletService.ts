@@ -1,94 +1,111 @@
-import sequelize from '../config/connection'
-import { IWallet } from '../types/WalletType'
+import { WalletType } from '../types/WalletType'
+import prisma from '../utils/database'
+import ResponseError from '../utils/response'
 
-const { Wallet, User, Transaction } = require('../models')
+interface IWallet {
+  addSaldo(id: string, balance: number): Promise<void>
+  sendBalance(id: string, balance: number, destination: string): Promise<any>
+}
+class WalletService implements IWallet {
+  async addSaldo(id: string, balance: number) {
+    const amount = balance
+    const note = 'top up balance'
 
-class WalletService {
-  public async addSaldo(balance: number, id: string) {
-    const dbTransaction = await sequelize.transaction()
+    const user = await prisma.user.findUnique({
+      where: {
+        id: id
+      },
+      include: {
+        wallet: true
+      }
+    })
 
-    try {
-      const amount = balance
-      const note = 'add balance'
+    if (user && user.wallet) {
+      user.wallet.balance += amount
 
-      const user = await User.findOne({
-        where: { id: id },
-        include: 'wallet'
+      await prisma.wallet.update({
+        where: { id: user.wallet.id },
+        data: { balance: user.wallet.balance }
       })
 
-      if (user && user.wallet) {
-        user.wallet.balance += amount
-        await user.wallet.save()
-
-        const transaction = await Transaction.create({
+      await prisma.transaction.create({
+        data: {
           walletId: user.wallet.id,
           type: 'debit',
           amount: amount,
           description: note
-        })
-      }
-
-      await dbTransaction.commit()
-    } catch (error) {
-      await dbTransaction.rollback()
+        }
+      })
     }
 
     return
   }
 
-  public async sendBalance(id: string, balance: number, destination: string) {
-    const dbTransaction = await sequelize.transaction()
-
-    try {
-      const user = await User.findOne({
+  async sendBalance(id: string, balance: number, destination: string) {
+    await prisma.$transaction(async () => {
+      const user = await prisma.user.findUnique({
         where: { id: id },
-        include: 'wallet'
+        include: {
+          wallet: true
+        }
       })
 
-      const destinationUser = await Wallet.findOne({
+      const userDestination = await prisma.wallet.findUnique({
         where: { id: destination },
-        include: 'user'
+        include: {
+          user: true
+        }
       })
 
       const amount = balance
       const note = 'transfer balance'
 
-      if (user.wallet.balance < amount) {
-        return { success: false, message: 'your money is not enough' }
+      if (user!.wallet!.balance < amount) {
+        throw new ResponseError(400, 'your money is not enough')
       }
 
-      user.wallet.balance -= amount
-      await user.wallet.save()
+      user!.wallet!.balance -= amount
 
-      const transaction = await Transaction.create({
-        walletId: user.wallet.id,
-        type: 'debit',
-        amount: amount,
-        description: note
+      await prisma.wallet.update({
+        where: { id: user!.wallet!.id },
+        data: { balance: user!.wallet!.balance }
       })
 
-      destinationUser.balance += amount
-      await destinationUser.save()
+      await prisma.transaction.create({
+        data: {
+          walletId: user!.wallet!.id,
+          type: 'debit',
+          amount: amount,
+          description: note
+        }
+      })
 
-      await dbTransaction.commit()
+      userDestination!.balance += amount
 
-      return { success: true, message: `success transfer to ${destinationUser.user.username}` }
-    } catch (error) {
-      await dbTransaction.rollback()
-    }
+      await prisma.wallet.update({
+        where: { id: userDestination!.id },
+        data: { balance: userDestination?.balance }
+      })
+    })
   }
 
-  public async createWallet(payload: IWallet) {
-    const wallet = await Wallet.create(payload)
+  async createWallet(payload: WalletType) {
+    const wallet = await prisma.wallet.create({
+      data: payload
+    })
 
     return wallet
   }
 
   public async getHistoryTransaction(id: string) {
-    const histories = await Wallet.findAll({
+    const histories = await prisma.wallet.findMany({
       where: { userId: id },
-      include: 'transactions',
-      order: [['createdAt', 'DESC']]
+      include: {
+        transaction: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     })
 
     return histories

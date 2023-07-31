@@ -1,10 +1,10 @@
 import supertest from 'supertest'
 import app from '../server'
-import { createTestUSer, removeTestUser } from './TestUtil'
+import { createTestUser, removeTestUser } from './TestUtil'
 
 describe('POST /api/v1/register', () => {
   beforeEach(async () => {
-    await createTestUSer()
+    await createTestUser()
   })
 
   afterEach(async () => {
@@ -69,7 +69,7 @@ describe('POST /api/v1/register', () => {
 
 describe('POST api/v1/login', () => {
   beforeEach(async () => {
-    await createTestUSer()
+    await createTestUser()
   })
 
   afterEach(async () => {
@@ -123,7 +123,7 @@ describe('GET api/v1/profile', () => {
   let token: string = ''
 
   beforeAll(async () => {
-    await createTestUSer()
+    await createTestUser()
     const response = await supertest(app).post('/api/v1/login').send({
       email: 'testUser@email.com',
       password: 'password'

@@ -1,4 +1,4 @@
-export interface IWallet {
+export type WalletType = {
   userId: string
   balance: number
 }

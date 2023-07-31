@@ -1,10 +1,10 @@
 import { Router } from 'express'
-import AuthRoutes from './AuthRoutes'
-import WalletRoutes from './WalletRoutes'
+import AuthRouter from './AuthRouter'
+import WalletRouter from './WalletRouter'
 
 const router: Router = Router()
 
-router.use('/api/v1/', AuthRoutes)
-router.use('/api/v1/', WalletRoutes)
+router.use('/api/v1/', AuthRouter)
+router.use('/api/v1/', WalletRouter)
 
 export default router
